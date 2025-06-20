@@ -19,11 +19,12 @@ This Terraform module creates and manages AWS Security Groups with a flexible, c
 
 The module follows a standardized naming pattern:
 
-```
+```path
 {prefix}-{environment}-{project}-{sg-name}-{suffix}
 ```
 
 **Examples:**
+
 - `production-myapp-web-sg` (without prefix/suffix)
 - `company-production-myapp-api-v2-sg` (with prefix and suffix)
 - `staging-ecommerce-database-sg` (staging environment)
@@ -610,6 +611,7 @@ general_tags = {
 ### Output Structures
 
 #### Security Groups Output
+
 ```hcl
 security_groups = {
   web = {
@@ -628,6 +630,7 @@ security_groups = {
 ```
 
 #### Security Group IDs Output
+
 ```hcl
 security_group_ids = {
   web      = "sg-0123456789abcdef0"
@@ -667,6 +670,7 @@ protocol  = "-1"
 ### Rule Sources and Destinations
 
 1. **CIDR Blocks** (IPv4/IPv6)
+
    ```hcl
    cidr_blocks      = ["0.0.0.0/0"]        # All IPv4
    ipv6_cidr_blocks = ["::/0"]             # All IPv6
@@ -675,12 +679,14 @@ protocol  = "-1"
    ```
 
 2. **Security Group References**
+
    ```hcl
    source_security_group_id = "sg-0123456789abcdef0"  # Specific SG
    source_security_group_id = module.other_sg.security_group_ids.web  # From another module
    ```
 
 3. **Self-Referencing**
+
    ```hcl
    self = true  # Allow traffic within the same security group
    ```
@@ -690,6 +696,7 @@ protocol  = "-1"
 ### Principle of Least Privilege
 
 1. **Specific Ports**: Use specific port ranges instead of allowing all ports
+
    ```hcl
    # Good
    from_port = 443
@@ -703,6 +710,7 @@ protocol  = "-1"
    ```
 
 2. **Restricted Sources**: Use specific CIDR blocks instead of 0.0.0.0/0 when possible
+
    ```hcl
    # Good for internal services
    cidr_blocks = ["10.0.0.0/8"]
@@ -715,6 +723,7 @@ protocol  = "-1"
    ```
 
 3. **Security Group References**: Use security group references for inter-service communication
+
    ```hcl
    # Better than CIDR blocks for internal communication
    source_security_group_id = module.web_sg.security_group_ids.web
@@ -922,97 +931,6 @@ resource "aws_eks_cluster" "main" {
 }
 ```
 
-### With RDS Database
-
-```hcl
-module "database_security" {
-  source = "./modules/security-groups"
-
-  vpc_id                 = var.vpc_id
-  create_security_groups = true
-
-  security_groups = [
-    {
-      name        = "rds-mysql"
-      description = "Security group for RDS MySQL database"
-      ingress_rules = [
-        {
-          from_port                = 3306
-          to_port                  = 3306
-          protocol                 = "tcp"
-          source_security_group_id = module.app_security.security_group_ids.web
-          description              = "MySQL access from web servers"
-        }
-      ]
-      egress_rules = []  # No outbound access needed
-    }
-  ]
-
-  general_tags = var.common_tags
-}
-
-resource "aws_db_instance" "mysql" {
-  identifier = "${var.project}-${var.environment}-mysql"
-  
-  vpc_security_group_ids = [module.database_security.security_group_ids.rds-mysql]
-  db_subnet_group_name   = aws_db_subnet_group.main.name
-  
-  # Other RDS configuration...
-}
-```
-
-### With Application Load Balancer
-
-```hcl
-module "alb_security" {
-  source = "./modules/security-groups"
-
-  vpc_id                 = var.vpc_id
-  create_security_groups = true
-
-  security_groups = [
-    {
-      name        = "alb-public"
-      description = "Security group for public Application Load Balancer"
-      ingress_rules = [
-        {
-          from_port   = 80
-          to_port     = 80
-          protocol    = "tcp"
-          cidr_blocks = ["0.0.0.0/0"]
-          description = "HTTP from internet"
-        },
-        {
-          from_port   = 443
-          to_port     = 443
-          protocol    = "tcp"
-          cidr_blocks = ["0.0.0.0/0"]
-          description = "HTTPS from internet"
-        }
-      ]
-      egress_rules = [
-        {
-          from_port                = 80
-          to_port                  = 80
-          protocol                 = "tcp"
-          source_security_group_id = module.app_security.security_group_ids.web
-          description              = "HTTP to web servers"
-        }
-      ]
-    }
-  ]
-
-  general_tags = var.common_tags
-}
-
-resource "aws_lb" "main" {
-  name               = "${var.project}-${var.environment}-alb"
-  load_balancer_type = "application"
-  security_groups    = [module.alb_security.security_group_ids.alb-public]
-  subnets            = var.public_subnet_ids
-}
-```
-
 ## Monitoring and Auditing
 
 ### CloudTrail Integration
@@ -1092,6 +1010,7 @@ resource "aws_config_config_rule" "security_group_ssh_check" {
 ### Common Issues
 
 1. **Security Group Rule Conflicts**
+
    ```bash
    # Check existing rules
    aws ec2 describe-security-groups --group-ids sg-0123456789abcdef0
@@ -1101,19 +1020,25 @@ resource "aws_config_config_rule" "security_group_ssh_check" {
    ```
 
 2. **VPC ID Missing Error**
-   ```
+
+   ```hcl
    Error: vpc_id is required when create_security_groups is true
    ```
+
    **Solution**: Ensure `vpc_id` is provided when creating new security groups:
+
    ```hcl
    vpc_id = module.vpc.vpc_id  # or data.aws_vpc.existing.id
    ```
 
 3. **Existing Security Group Not Found**
-   ```
+
+   ```hcl
    Error: Missing security groups in existing_security_groups: web, database
    ```
+
    **Solution**: Provide all referenced security group IDs:
+
    ```hcl
    existing_security_groups = {
      web      = "sg-0123456789abcdef0"
@@ -1122,19 +1047,24 @@ resource "aws_config_config_rule" "security_group_ssh_check" {
    ```
 
 4. **Circular Dependencies**
-   ```
+
+   ```hcl
    Error: Cycle: aws_security_group_rule.web_to_db, aws_security_group_rule.db_to_web
    ```
+
    **Solution**: Create security groups first, then add cross-references:
+
    ```hcl
    # Step 1: Create security groups without cross-references
    # Step 2: Add rules with references separately
    ```
 
 5. **Rule Duplication**
-   ```
+
+   ```hcl
    Error: InvalidGroup.Duplicate: the specified rule "peer: sg-xxx, TCP, from port: 80, to port: 80, ALLOW" already exists
    ```
+
    **Solution**: Check for duplicate rules in your configuration
 
 ### Debugging Commands
@@ -1173,6 +1103,7 @@ The module includes built-in validation checks:
 ### Rule Limits
 
 AWS has limits on security group rules:
+
 - **Rules per security group**: 60 inbound, 60 outbound (soft limit)
 - **Security groups per network interface**: 5 (hard limit)
 - **Referenced security groups**: 5 per rule
@@ -1180,6 +1111,7 @@ AWS has limits on security group rules:
 ### Optimization Strategies
 
 1. **Consolidate Similar Rules**
+
    ```hcl
    # Instead of multiple single-port rules
    # Use port ranges where possible
@@ -1193,12 +1125,14 @@ AWS has limits on security group rules:
    ```
 
 2. **Use Security Group References**
+
    ```hcl
    # More efficient than CIDR blocks for dynamic environments
    source_security_group_id = module.web_sg.security_group_ids.web
    ```
 
 3. **Minimize Cross-References**
+
    ```hcl
    # Design security groups to minimize circular dependencies
    # Use hierarchical approach: ALB -> Web -> Database
@@ -1224,12 +1158,14 @@ AWS has limits on security group rules:
 ### From Manual to Terraform
 
 1. **Import Existing Security Groups**
+
    ```bash
    # Import existing security group
    terraform import module.security_groups.aws_security_group.security_groups[\"web\"] sg-0123456789abcdef0
    ```
 
 2. **Gradual Migration**
+
    ```hcl
    # Phase 1: Import existing SGs, don't create rules
    create_security_groups = false
@@ -1245,6 +1181,7 @@ AWS has limits on security group rules:
    ```
 
 3. **Blue-Green Security Groups**
+
    ```hcl
    # Create new security groups alongside existing ones
    name_suffix = "v2"
@@ -1272,30 +1209,29 @@ AWS has limits on security group rules:
 ## Best Practices Summary
 
 ### Security
+
 1. **Principle of Least Privilege**: Minimal required access
 2. **Specific Rules**: Avoid broad port ranges and CIDR blocks
 3. **Rule Documentation**: Clear, meaningful descriptions
 4. **Regular Audits**: Periodic security group reviews
 
 ### Operational
+
 1. **Standardized Naming**: Consistent naming conventions
 2. **Environment Separation**: Clear environment boundaries
 3. **Version Control**: All changes through Terraform
 4. **Documentation**: Comprehensive rule documentation
 
 ### Performance
+
 1. **Rule Optimization**: Efficient rule design
 2. **Dependency Management**: Minimize circular dependencies
 3. **Monitoring**: Track security group usage and effectiveness
 
-### Cost Management
-1. **Resource Efficiency**: Remove unused security groups
-2. **Automation**: Reduce manual management overhead
-3. **Standardization**: Reuse common patterns
-
 ## Contributing
 
 When contributing to this module:
+
 1. Follow security best practices for all examples
 2. Test with multiple security group configurations
 3. Validate cross-referencing scenarios

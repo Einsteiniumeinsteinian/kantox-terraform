@@ -19,15 +19,17 @@ This Terraform module deploys essential Kubernetes resources and components for 
 The module deploys the following components:
 
 ### Core Components
+
 1. **Metrics Server**: Collects resource metrics from kubelets
 2. **Cluster Autoscaler**: Scales node groups based on pod scheduling needs
 3. **AWS Load Balancer Controller**: Manages ALB/NLB for Kubernetes services
 
 ### Supporting Resources
-4. **IAM Roles**: Service-specific roles with minimal required permissions
-5. **IAM Policies**: AWS managed and custom policies for each component
-6. **Namespaces**: Application namespaces with custom labels and annotations
-7. **OIDC Provider**: Optional OIDC provider for IRSA (if not already existing)
+
+1. **IAM Roles**: Service-specific roles with minimal required permissions
+2. **IAM Policies**: AWS managed and custom policies for each component
+3. **Namespaces**: Application namespaces with custom labels and annotations
+4. **OIDC Provider**: Optional OIDC provider for IRSA (if not already existing)
 
 ## Usage
 
@@ -274,6 +276,7 @@ namespaces = [
 ### Detailed Output Structures
 
 #### Component Status Output
+
 ```hcl
 component_status = {
   metrics_server            = bool    # Installation status
@@ -285,6 +288,7 @@ component_status = {
 ```
 
 #### Service Account Annotations Output
+
 ```hcl
 service_account_annotations = {
   cluster_autoscaler = {
@@ -303,12 +307,14 @@ service_account_annotations = {
 **Purpose**: Collects resource metrics from kubelets and exposes them through the Kubernetes API
 
 **Features**:
+
 - Resource metrics for pods and nodes
 - Enables Horizontal Pod Autoscaler (HPA)
 - Configurable kubelet communication settings
 - Resource requests: 100m CPU, 200Mi memory
 
 **Configuration Options**:
+
 - TLS settings for kubelet communication
 - Preferred address types for kubelet discovery
 
@@ -317,17 +323,20 @@ service_account_annotations = {
 **Purpose**: Automatically adjusts the number of nodes in a cluster based on pod scheduling requirements
 
 **Features**:
+
 - Automatic node group scaling
 - Configurable scale-down policies
 - Integration with AWS Auto Scaling Groups
 - IRSA-enabled service account
 
 **IAM Permissions**:
+
 - Auto Scaling Group management
 - EC2 instance and launch template describe
 - Instance termination capabilities
 
 **Key Settings**:
+
 - Scale down delay: 10 minutes (configurable)
 - Utilization threshold: 50% (configurable)
 - Skips nodes with local storage and system pods
@@ -337,18 +346,21 @@ service_account_annotations = {
 **Purpose**: Manages AWS Application Load Balancers (ALB) and Network Load Balancers (NLB) for Kubernetes services
 
 **Features**:
+
 - Automatic ALB/NLB provisioning
 - Advanced traffic routing
 - Integration with AWS services
 - Support for Kubernetes Ingress resources
 
 **IAM Permissions**:
+
 - EC2 and ELB management
 - Target group and security group management
 - Route53 integration for DNS
 - WAF integration capabilities
 
 **Benefits**:
+
 - Cost-effective load balancing
 - Advanced routing capabilities
 - Native AWS integration
@@ -361,6 +373,7 @@ service_account_annotations = {
 Each component uses dedicated IAM roles with minimal required permissions:
 
 #### Cluster Autoscaler IAM Policy
+
 ```json
 {
   "Version": "2012-10-17",
@@ -382,9 +395,6 @@ Each component uses dedicated IAM roles with minimal required permissions:
   ]
 }
 ```
-
-#### AWS Load Balancer Controller
-Uses the official AWS managed policy downloaded from the GitHub repository, ensuring up-to-date permissions.
 
 ### OIDC Trust Relationships
 
@@ -472,51 +482,6 @@ spec:
               number: 80
 ```
 
-### Complete Integration Example
-
-```hcl
-# EKS Cluster
-module "eks_cluster" {
-  source = "./modules/eks-cluster"
-  # ... cluster configuration
-}
-
-# Node Groups
-module "eks_node_groups" {
-  source = "./modules/eks-node-groups"
-  
-  cluster = {
-    name                       = module.eks_cluster.cluster_name
-    endpoint                   = module.eks_cluster.cluster_endpoint
-    certificate_authority_data = module.eks_cluster.cluster_certificate_authority_data
-    version                    = module.eks_cluster.cluster_version
-  }
-  
-  depends_on = [module.eks_cluster]
-}
-
-# Kubernetes Resources
-module "k8s_resources" {
-  source = "./modules/k8s-resources"
-
-  cluster_name             = module.eks_cluster.cluster_name
-  cluster_endpoint         = module.eks_cluster.cluster_endpoint
-  cluster_ca_certificate   = module.eks_cluster.cluster_certificate_authority_data
-  cluster_oidc_issuer_url  = module.eks_cluster.oidc_provider_url_https
-  oidc_provider_arn        = module.eks_cluster.oidc_provider_arn
-  aws_region               = var.aws_region
-  vpc_id                   = var.vpc_id
-
-  namespaces = [
-    { name = "production" },
-    { name = "staging" },
-    { name = "monitoring" }
-  ]
-
-  depends_on = [module.eks_node_groups]
-}
-```
-
 ## Monitoring and Observability
 
 ### Metrics Collection
@@ -571,6 +536,7 @@ aws elbv2 describe-load-balancers
 ### Common Issues
 
 1. **Metrics Server Not Starting**
+
    ```bash
    # Check kubelet TLS settings
    kubectl describe pod -n kube-system -l k8s-app=metrics-server
@@ -580,6 +546,7 @@ aws elbv2 describe-load-balancers
    ```
 
 2. **Cluster Autoscaler Not Scaling**
+
    ```bash
    # Check autoscaler logs
    kubectl logs -n kube-system deployment/cluster-autoscaler
@@ -592,6 +559,7 @@ aws elbv2 describe-load-balancers
    ```
 
 3. **Load Balancer Controller Issues**
+
    ```bash
    # Check service account annotations
    kubectl describe serviceaccount aws-load-balancer-controller -n kube-system
@@ -651,6 +619,7 @@ kubectl get validatingwebhookconfigurations aws-load-balancer-webhook
 ## Contributing
 
 When contributing to this module:
+
 1. Test all components together and individually
 2. Verify IRSA integration works correctly
 3. Update version compatibility matrix

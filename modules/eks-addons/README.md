@@ -132,26 +132,11 @@ The `resolve_conflicts_on_update` parameter accepts the following values:
 
 Here are some commonly used EKS add-ons you can install with this module:
 
-### Core Add-ons
-
-- `vpc-cni`: Amazon VPC CNI plugin for Kubernetes
-- `coredns`: CoreDNS for cluster DNS resolution
-- `kube-proxy`: Kubernetes network proxy
-- `aws-ebs-csi-driver`: Amazon EBS CSI driver
-
-### Additional Add-ons
-
-- `aws-load-balancer-controller`: AWS Load Balancer Controller
-- `amazon-cloudwatch-observability`: CloudWatch Container Insights
-- `adot`: AWS Distro for OpenTelemetry
-- `eks-pod-identity-agent`: EKS Pod Identity Agent
-- `snapshot-controller`: Volume snapshot controller
-
 ## Naming Convention
 
 The module automatically generates resource names using the following pattern:
 
-```
+```bash
 [name_prefix-][Environment]-[Project]-[cluster_name][-name_suffix]-addon-[addon_name]
 ```
 

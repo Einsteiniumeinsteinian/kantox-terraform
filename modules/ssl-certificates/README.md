@@ -17,27 +17,27 @@ This Terraform module creates and manages AWS Certificate Manager (ACM) SSL/TLS 
 
 ### Single Domain Certificate
 
-```
+```cert
 example.com
 ```
 
 ### Multi-Domain Certificate (SAN)
 
-```
+```cert
 Primary: example.com
 SANs: www.example.com, api.example.com, admin.example.com
 ```
 
-### Wildcard Certificate
+### Wildcard
 
-```
+```cert
 Primary: *.example.com
 SANs: example.com (apex domain)
 ```
 
 ### Multi-Level Wildcard
 
-```
+```cert
 Primary: *.example.com
 SANs: *.api.example.com, *.admin.example.com
 ```
@@ -422,7 +422,7 @@ auto_validate = true
 
 #### Certificate ARN
 
-```
+```arn
 arn:aws:acm:us-west-2:123456789012:certificate/12345678-1234-1234-1234-123456789012
 ```
 
@@ -472,7 +472,7 @@ www.example.com,CNAME,_acme-challenge.www.example.com.,xyz789uvw456...
 3. **Add DNS Records**
    Add the CNAME records to your DNS provider:
 
-   ```
+   ```docs
    Name: _acme-challenge.example.com.
    Type: CNAME
    Value: abc123def456...
@@ -482,216 +482,12 @@ www.example.com,CNAME,_acme-challenge.www.example.com.,xyz789uvw456...
 4. **Wait for Validation**
    AWS will automatically detect the DNS records and validate the certificate.
 
-### DNS Provider Examples
-
-#### Route 53
-
-```hcl
-# Get the hosted zone
-data "aws_route53_zone" "main" {
-  name         = "example.com"
-  private_zone = false
-}
-
-# Add validation records
-resource "aws_route53_record" "cert_validation" {
-  for_each = module.ssl_certificate.validation_records
-
-  zone_id = data.aws_route53_zone.main.zone_id
-  name    = each.value.name
-  type    = each.value.type
-  ttl     = 300
-  records = [each.value.value]
-}
-
-# Enable auto-validation when using Route 53
-module "ssl_certificate" {
-  source = "./modules/ssl-certificates"
-
-  domain_name      = "example.com"
-  certificate_name = "example-com"
-  auto_validate    = true  # Safe to use with Route 53 automation
-
-  depends_on = [aws_route53_record.cert_validation]
-}
-```
-
-#### Cloudflare
-
-```hcl
-resource "cloudflare_record" "cert_validation" {
-  for_each = module.ssl_certificate.validation_records
-
-  zone_id = var.cloudflare_zone_id
-  name    = trimsuffix(each.value.name, ".${each.key}.")
-  value   = each.value.value
-  type    = each.value.type
-  ttl     = 1  # Auto TTL
-}
-```
-
-#### Manual DNS Configuration
-
-For providers not supported by Terraform, use the CSV output:
-
 ```bash
 # Export validation records
 terraform output -raw validation_records_csv > dns_records.csv
 
 # Import into your DNS provider's bulk import tool
 # Or add records manually through the DNS provider's web interface
-```
-
-## Integration Examples
-
-### With Application Load Balancer
-
-```hcl
-module "app_certificate" {
-  source = "./modules/ssl-certificates"
-
-  domain_name = "api.example.com"
-  subject_alternative_names = [
-    "www.api.example.com"
-  ]
-  certificate_name = "api-certificate"
-  auto_validate    = false
-
-  tags = var.common_tags
-}
-
-resource "aws_lb" "main" {
-  name               = "main-alb"
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets           = var.public_subnet_ids
-
-  tags = var.common_tags
-}
-
-resource "aws_lb_listener" "https" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = "443"
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
-  certificate_arn   = module.app_certificate.certificate_arn
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.main.arn
-  }
-}
-```
-
-### With CloudFront Distribution
-
-```hcl
-# Certificate must be in us-east-1 for CloudFront
-provider "aws" {
-  alias  = "us_east_1"
-  region = "us-east-1"
-}
-
-module "cloudfront_certificate" {
-  source = "./modules/ssl-certificates"
-  
-  providers = {
-    aws = aws.us_east_1
-  }
-
-  domain_name = "cdn.example.com"
-  subject_alternative_names = [
-    "assets.example.com"
-  ]
-  certificate_name = "cloudfront-cert"
-  auto_validate    = false
-
-  tags = var.common_tags
-}
-
-resource "aws_cloudfront_distribution" "main" {
-  origin {
-    domain_name = aws_s3_bucket.assets.bucket_domain_name
-    origin_id   = "S3-assets"
-
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.main.cloudfront_access_identity_path
-    }
-  }
-
-  aliases = [
-    "cdn.example.com",
-    "assets.example.com"
-  ]
-
-  viewer_certificate {
-    acm_certificate_arn      = module.cloudfront_certificate.certificate_arn
-    ssl_support_method       = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2021"
-  }
-
-  # Other CloudFront configuration...
-}
-```
-
-### With API Gateway
-
-```hcl
-module "api_certificate" {
-  source = "./modules/ssl-certificates"
-
-  domain_name      = "api.example.com"
-  certificate_name = "api-gateway-cert"
-  auto_validate    = false
-
-  tags = var.common_tags
-}
-
-resource "aws_api_gateway_domain_name" "main" {
-  certificate_arn = module.api_certificate.certificate_arn
-  domain_name     = "api.example.com"
-  security_policy = "TLS_1_2"
-}
-
-resource "aws_api_gateway_base_path_mapping" "main" {
-  api_id      = aws_api_gateway_rest_api.main.id
-  stage_name  = aws_api_gateway_deployment.main.stage_name
-  domain_name = aws_api_gateway_domain_name.main.domain_name
-}
-```
-
-### With Elastic Beanstalk
-
-```hcl
-module "eb_certificate" {
-  source = "./modules/ssl-certificates"
-
-  domain_name = "app.example.com"
-  certificate_name = "elastic-beanstalk-cert"
-  auto_validate    = false
-
-  tags = var.common_tags
-}
-
-resource "aws_elastic_beanstalk_environment" "main" {
-  name                = "${var.app_name}-${var.environment}"
-  application         = aws_elastic_beanstalk_application.main.name
-  solution_stack_name = "64bit Amazon Linux 2 v3.4.0 running Python 3.8"
-
-  setting {
-    namespace = "aws:elbv2:listener:443"
-    name      = "Protocol"
-    value     = "HTTPS"
-  }
-
-  setting {
-    namespace = "aws:elbv2:listener:443"
-    name      = "SSLCertificateArns"
-    value     = module.eb_certificate.certificate_arn
-  }
-
-  # Other Elastic Beanstalk configuration...
-}
 ```
 
 ## Certificate Management
@@ -822,7 +618,7 @@ data "aws_iam_policy_document" "certificate_manager" {
 
 1. **Certificate Validation Timeout**
 
-   ```
+   ```error
    Error: Error waiting for certificate validation: timeout while waiting for state to become 'ISSUED'
    ```
 
@@ -833,7 +629,7 @@ data "aws_iam_policy_document" "certificate_manager" {
 
 2. **Domain Validation Failed**
 
-   ```
+   ```error
    Certificate status: VALIDATION_TIMED_OUT
    ```
 
@@ -844,7 +640,7 @@ data "aws_iam_policy_document" "certificate_manager" {
 
 3. **Certificate ARN Not Found**
 
-   ```
+   ```error
    Error: Certificate not found
    ```
 
@@ -855,7 +651,7 @@ data "aws_iam_policy_document" "certificate_manager" {
 
 4. **CloudFront Certificate Region Error**
 
-   ```
+   ```error
    Error: Certificate must be in us-east-1 for CloudFront
    ```
 

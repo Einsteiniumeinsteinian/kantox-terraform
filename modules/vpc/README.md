@@ -18,7 +18,7 @@ This Terraform module creates a comprehensive AWS Virtual Private Cloud (VPC) in
 
 The module creates a standard 3-tier network architecture:
 
-```
+```architecture
 Internet
     │
     ▼
@@ -550,145 +550,6 @@ enable_dns_hostnames = true
 enable_dns_support   = true
 ```
 
-## Integration Examples
-
-### With EKS Cluster
-
-```hcl
-module "vpc" {
-  source = "./modules/vpc"
-
-  network = {
-    cidr_block     = "10.0.0.0/16"
-    Azs            = ["us-west-2a", "us-west-2b", "us-west-2c"]
-    public_subnet  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-    private_subnet = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
-    create_default_sg = true
-  }
-
-  general_tags = var.common_tags
-
-  optional_tags = {
-    public_subnets = {
-      "kubernetes.io/role/elb" = "1"
-    }
-    private_subnets = {
-      "kubernetes.io/role/internal-elb" = "1"
-    }
-  }
-}
-
-resource "aws_eks_cluster" "main" {
-  name     = var.cluster_name
-  role_arn = aws_iam_role.eks_cluster.arn
-
-  vpc_config {
-    subnet_ids = concat(
-      module.vpc.public_subnet_ids,
-      module.vpc.private_subnet_ids
-    )
-  }
-}
-
-resource "aws_eks_node_group" "main" {
-  cluster_name    = aws_eks_cluster.main.name
-  node_group_name = "main"
-  node_role_arn   = aws_iam_role.eks_node_group.arn
-  subnet_ids      = module.vpc.private_subnet_ids
-
-  scaling_config {
-    desired_size = 2
-    max_size     = 4
-    min_size     = 1
-  }
-}
-```
-
-### With RDS Database
-
-```hcl
-module "vpc" {
-  source = "./modules/vpc"
-
-  network = {
-    cidr_block     = "10.0.0.0/16"
-    Azs            = ["us-west-2a", "us-west-2b", "us-west-2c"]
-    public_subnet  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-    private_subnet = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
-    create_default_sg = true
-  }
-
-  general_tags = var.common_tags
-}
-
-# Database subnet group
-resource "aws_db_subnet_group" "main" {
-  name       = "${var.project}-${var.environment}-db-subnet-group"
-  subnet_ids = module.vpc.private_subnet_ids
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project}-${var.environment}-db-subnet-group"
-  })
-}
-
-# RDS instance
-resource "aws_db_instance" "main" {
-  identifier             = "${var.project}-${var.environment}-db"
-  db_subnet_group_name   = aws_db_subnet_group.main.name
-  vpc_security_group_ids = [aws_security_group.database.id]
-  
-  # Other RDS configuration...
-}
-```
-
-### With Application Load Balancer
-
-```hcl
-module "vpc" {
-  source = "./modules/vpc"
-
-  network = {
-    cidr_block     = "10.0.0.0/16"
-    Azs            = ["us-west-2a", "us-west-2b"]
-    public_subnet  = ["10.0.1.0/24", "10.0.2.0/24"]
-    private_subnet = ["10.0.11.0/24", "10.0.12.0/24"]
-    create_default_sg = true
-  }
-
-  general_tags = var.common_tags
-}
-
-resource "aws_lb" "main" {
-  name               = "${var.project}-${var.environment}-alb"
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets           = module.vpc.public_subnet_ids
-
-  enable_deletion_protection = false
-
-  tags = var.common_tags
-}
-
-resource "aws_lb_target_group" "main" {
-  name     = "${var.project}-${var.environment}-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = module.vpc.vpc_id
-
-  health_check {
-    enabled             = true
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    timeout             = 5
-    interval            = 30
-    path                = "/health"
-    matcher             = "200"
-  }
-
-  tags = var.common_tags
-}
-```
-
 ## Advanced Configurations
 
 ### VPC Peering Preparation
@@ -1196,7 +1057,7 @@ optional_tags = {
 
 ## Best Practices Summary
 
-### Network Architecture
+### Network
 
 1. **Multi-AZ Deployment**: Always use at least 2 AZs for high availability
 2. **Subnet Sizing**: Plan subnet sizes based on expected resource count

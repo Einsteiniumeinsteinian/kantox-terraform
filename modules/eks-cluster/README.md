@@ -292,46 +292,6 @@ The deploying user/role needs permissions for:
 
 4. **Configure RBAC**: Set up Kubernetes RBAC for user and service account access
 
-## Integration Examples
-
-### With Node Groups Module
-
-```hcl
-module "eks_cluster" {
-  source = "./modules/eks-cluster"
-  # ... cluster configuration
-}
-
-module "eks_node_groups" {
-  source = "./modules/eks-node-groups"
-  
-  cluster_name = module.eks_cluster.cluster_name
-  # ... node group configuration
-}
-```
-
-### With Add-ons Module
-
-```hcl
-module "eks_cluster" {
-  source = "./modules/eks-cluster"
-  # ... cluster configuration
-}
-
-module "eks_addons" {
-  source = "./modules/eks-addons"
-  
-  cluster_name = module.eks_cluster.cluster_name
-  addons = [
-    { name = "vpc-cni" },
-    { name = "coredns" },
-    { name = "kube-proxy" }
-  ]
-  
-  depends_on = [module.eks_cluster]
-}
-```
-
 ## Troubleshooting
 
 ### Common Issues

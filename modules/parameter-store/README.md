@@ -16,11 +16,12 @@ This Terraform module creates and manages AWS Systems Manager Parameter Store pa
 
 The module organizes parameters using a hierarchical naming structure:
 
-```
+```path
 /{Project}/{Environment}/{parameter-key}
 ```
 
 **Examples:**
+
 - `/myapp/production/database/host`
 - `/myapp/production/api/jwt-secret`
 - `/myapp/staging/redis/password`
@@ -96,87 +97,6 @@ module "app_config_production" {
       description = "Database password for application user"
     }
 
-    # Redis Configuration
-    "redis/host" = {
-      type        = "String"
-      value       = module.elasticache.primary_endpoint
-      description = "Redis cluster primary endpoint"
-    }
-    "redis/port" = {
-      type        = "String"
-      value       = "6379"
-      description = "Redis port number"
-    }
-    "redis/auth-token" = {
-      type        = "SecureString"
-      value       = random_password.redis_auth.result
-      description = "Redis authentication token"
-    }
-
-    # API Configuration
-    "api/jwt-secret" = {
-      type        = "SecureString"
-      value       = random_password.jwt_secret.result
-      description = "JWT signing secret for API authentication"
-    }
-    "api/encryption-key" = {
-      type        = "SecureString"
-      value       = random_password.encryption_key.result
-      description = "Application encryption key for sensitive data"
-    }
-    "api/cors-origins" = {
-      type        = "StringList"
-      value       = "https://myapp.com,https://www.myapp.com,https://admin.myapp.com"
-      description = "Allowed CORS origins for API"
-    }
-
-    # External Service Configuration
-    "external/stripe-secret-key" = {
-      type        = "SecureString"
-      value       = var.stripe_secret_key
-      description = "Stripe secret key for payment processing"
-    }
-    "external/sendgrid-api-key" = {
-      type        = "SecureString"
-      value       = var.sendgrid_api_key
-      description = "SendGrid API key for email delivery"
-    }
-    "external/aws-s3-bucket" = {
-      type        = "String"
-      value       = module.s3_bucket.bucket_name
-      description = "S3 bucket name for file uploads"
-    }
-
-    # Feature Flags
-    "features/new-ui-enabled" = {
-      type        = "String"
-      value       = "true"
-      description = "Enable new UI features"
-    }
-    "features/beta-features" = {
-      type        = "String"
-      value       = "false"
-      description = "Enable beta features for testing"
-    }
-    "features/maintenance-mode" = {
-      type        = "String"
-      value       = "false"
-      description = "Enable maintenance mode"
-    }
-
-    # Application Limits
-    "limits/max-upload-size" = {
-      type        = "String"
-      value       = "10485760"
-      description = "Maximum file upload size in bytes (10MB)"
-    }
-    "limits/rate-limit-per-minute" = {
-      type        = "String"
-      value       = "1000"
-      description = "API rate limit per minute per user"
-    }
-  }
-
   general_tags = {
     Project     = "myapp"
     Environment = "production"
@@ -184,168 +104,6 @@ module "app_config_production" {
     Team        = "backend"
     ManagedBy   = "terraform"
     CostCenter  = "engineering"
-  }
-}
-```
-
-### Multi-Environment Setup
-
-```hcl
-# Development Environment
-module "app_config_development" {
-  source = "./terraform/modules/parameter-store"
-
-  parameters = {
-    "database/host" = {
-      type        = "String"
-      value       = "localhost"
-      description = "Development database hostname"
-    }
-    "database/port" = {
-      type        = "String"
-      value       = "5432"
-      description = "Development database port"
-    }
-    "api/log-level" = {
-      type        = "String"
-      value       = "debug"
-      description = "Application log level for development"
-    }
-    "features/debug-mode" = {
-      type        = "String"
-      value       = "true"
-      description = "Enable debug mode for development"
-    }
-  }
-
-  general_tags = {
-    Project     = "myapp"
-    Environment = "development"
-    Owner       = "dev-team"
-    Team        = "backend"
-    ManagedBy   = "terraform"
-  }
-}
-
-# Staging Environment
-module "app_config_staging" {
-  source = "./terraform/modules/parameter-store"
-
-  parameters = {
-    "database/host" = {
-      type        = "String"
-      value       = module.rds_staging.cluster_endpoint
-      description = "Staging database hostname"
-    }
-    "database/port" = {
-      type        = "String"
-      value       = "5432"
-      description = "Staging database port"
-    }
-    "api/log-level" = {
-      type        = "String"
-      value       = "info"
-      description = "Application log level for staging"
-    }
-    "features/beta-features" = {
-      type        = "String"
-      value       = "true"
-      description = "Enable beta features in staging"
-    }
-  }
-
-  general_tags = {
-    Project     = "myapp"
-    Environment = "staging"
-    Owner       = "platform-team"
-    Team        = "backend"
-    ManagedBy   = "terraform"
-  }
-}
-
-# Production Environment
-module "app_config_production" {
-  source = "./terraform/modules/parameter-store"
-
-  parameters = {
-    "database/host" = {
-      type        = "String"
-      value       = module.rds_production.cluster_endpoint
-      description = "Production database hostname"
-    }
-    "database/port" = {
-      type        = "String"
-      value       = "5432"
-      description = "Production database port"
-    }
-    "api/log-level" = {
-      type        = "String"
-      value       = "warn"
-      description = "Application log level for production"
-    }
-    "features/beta-features" = {
-      type        = "String"
-      value       = "false"
-      description = "Disable beta features in production"
-    }
-  }
-
-  general_tags = {
-    Project     = "myapp"
-    Environment = "production"
-    Owner       = "platform-team"
-    Team        = "backend"
-    ManagedBy   = "terraform"
-  }
-}
-```
-
-### Feature Flag Management
-
-```hcl
-module "feature_flags" {
-  source = "./terraform/modules/parameter-store"
-
-  parameters = {
-    "features/new-checkout-flow" = {
-      type        = "String"
-      value       = "false"
-      description = "Enable new checkout flow UI"
-    }
-    "features/payment-gateway-v2" = {
-      type        = "String"
-      value       = "false"
-      description = "Enable new payment gateway integration"
-    }
-    "features/advanced-analytics" = {
-      type        = "String"
-      value       = "true"
-      description = "Enable advanced analytics dashboard"
-    }
-    "features/mobile-app-api" = {
-      type        = "String"
-      value       = "true"
-      description = "Enable mobile app API endpoints"
-    }
-    "features/maintenance-mode" = {
-      type        = "String"
-      value       = "false"
-      description = "Enable maintenance mode"
-    }
-    "experiments/ab-test-checkout" = {
-      type        = "String"
-      value       = "variant-a"
-      description = "A/B test variant for checkout flow (variant-a, variant-b)"
-    }
-  }
-
-  general_tags = {
-    Project     = "myapp"
-    Environment = "production"
-    Owner       = "product-team"
-    Team        = "frontend"
-    ManagedBy   = "terraform"
-    Purpose     = "feature-flags"
   }
 }
 ```
@@ -395,6 +153,7 @@ parameters = {
 ### Output Structures
 
 #### Parameters Output
+
 ```hcl
 parameters = {
   "database/host" = {
@@ -414,31 +173,8 @@ parameters = {
 
 ### Recommended Naming Structure
 
-```
+```path
 /{Project}/{Environment}/{Category}/{Parameter}
-```
-
-**Categories:**
-- `database/` - Database connection and configuration
-- `api/` - API-specific configuration and secrets
-- `redis/` - Redis/ElastiCache configuration
-- `external/` - Third-party service credentials and configuration
-- `features/` - Feature flags and toggles
-- `limits/` - Application limits and constraints
-- `monitoring/` - Monitoring and alerting configuration
-- `deployment/` - Deployment-specific configuration
-
-**Examples:**
-```
-/myapp/production/database/host
-/myapp/production/database/password
-/myapp/production/api/jwt-secret
-/myapp/production/redis/auth-token
-/myapp/production/external/stripe-secret-key
-/myapp/production/features/new-ui-enabled
-/myapp/production/limits/max-upload-size
-/myapp/production/monitoring/slack-webhook-url
-/myapp/production/deployment/image-tag
 ```
 
 ## Security Best Practices
@@ -446,6 +182,7 @@ parameters = {
 ### Parameter Types and Encryption
 
 1. **Use SecureString for Sensitive Data**
+
    ```hcl
    "database/password" = {
      type        = "SecureString"  # Automatically encrypted with KMS
@@ -455,6 +192,7 @@ parameters = {
    ```
 
 2. **Use String for Non-Sensitive Configuration**
+
    ```hcl
    "database/host" = {
      type        = "String"  # Plain text, no encryption needed
@@ -464,6 +202,7 @@ parameters = {
    ```
 
 3. **Use StringList for Multiple Values**
+
    ```hcl
    "api/cors-origins" = {
      type        = "StringList"  # Comma-separated values
@@ -552,28 +291,8 @@ services:
       - .env.production  # Contains parameters from Parameter Store
 ```
 
-### Application Code Examples
-
-#### Python
-```python
-import boto3
-
-ssm = boto3.client('ssm')
-
-def get_parameter(name, decrypt=False):
-    response = ssm.get_parameter(
-        Name=f'/myapp/production/{name}',
-        WithDecryption=decrypt
-    )
-    return response['Parameter']['Value']
-
-# Usage
-db_host = get_parameter('database/host')
-db_password = get_parameter('database/password', decrypt=True)
-jwt_secret = get_parameter('api/jwt-secret', decrypt=True)
-```
-
 #### Node.js
+
 ```javascript
 const AWS = require('aws-sdk');
 const ssm = new AWS.SSM();
@@ -592,39 +311,6 @@ async function getParameter(name, decrypt = false) {
 const dbHost = await getParameter('database/host');
 const dbPassword = await getParameter('database/password', true);
 const jwtSecret = await getParameter('api/jwt-secret', true);
-```
-
-#### Go
-```go
-package main
-
-import (
-    "github.com/aws/aws-sdk-go/aws"
-    "github.com/aws/aws-sdk-go/aws/session"
-    "github.com/aws/aws-sdk-go/service/ssm"
-)
-
-func getParameter(svc *ssm.SSM, name string, decrypt bool) (string, error) {
-    input := &ssm.GetParameterInput{
-        Name:           aws.String(fmt.Sprintf("/myapp/production/%s", name)),
-        WithDecryption: aws.Bool(decrypt),
-    }
-    
-    result, err := svc.GetParameter(input)
-    if err != nil {
-        return "", err
-    }
-    
-    return *result.Parameter.Value, nil
-}
-
-// Usage
-sess := session.Must(session.NewSession())
-svc := ssm.New(sess)
-
-dbHost, _ := getParameter(svc, "database/host", false)
-dbPassword, _ := getParameter(svc, "database/password", true)
-jwtSecret, _ := getParameter(svc, "api/jwt-secret", true)
 ```
 
 ## Monitoring and Auditing
@@ -672,55 +358,12 @@ resource "aws_cloudwatch_metric_alarm" "parameter_access_failures" {
 }
 ```
 
-## Backup and Disaster Recovery
-
-### Parameter Backup Script
-
-```bash
-#!/bin/bash
-# Backup all parameters for a project/environment
-
-PROJECT="myapp"
-ENVIRONMENT="production"
-BACKUP_FILE="parameters-backup-$(date +%Y%m%d).json"
-
-aws ssm get-parameters-by-path \
-  --path "/${PROJECT}/${ENVIRONMENT}" \
-  --recursive \
-  --with-decryption \
-  --output json > $BACKUP_FILE
-
-echo "Parameters backed up to $BACKUP_FILE"
-```
-
-### Parameter Restore Script
-
-```bash
-#!/bin/bash
-# Restore parameters from backup
-
-BACKUP_FILE=$1
-
-if [ -z "$BACKUP_FILE" ]; then
-  echo "Usage: $0 <backup-file>"
-  exit 1
-fi
-
-jq -r '.Parameters[] | "\(.Name) \(.Type) \(.Value)"' $BACKUP_FILE | while read name type value; do
-  aws ssm put-parameter \
-    --name "$name" \
-    --type "$type" \
-    --value "$value" \
-    --overwrite
-  echo "Restored: $name"
-done
-```
-
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Parameter Not Found**
+
    ```bash
    # Check parameter exists
    aws ssm get-parameter --name "/myapp/production/database/host"
@@ -730,6 +373,7 @@ done
    ```
 
 2. **Access Denied**
+
    ```bash
    # Check IAM permissions
    aws iam simulate-principal-policy \
@@ -739,6 +383,7 @@ done
    ```
 
 3. **Decryption Failures**
+
    ```bash
    # Check KMS permissions
    aws ssm get-parameter --name "/myapp/production/api/jwt-secret" --with-decryption
@@ -774,6 +419,7 @@ aws ssm get-parameter-history --name "/myapp/production/database/host"
 ### Cost Optimization Strategies
 
 1. **Batch Parameter Retrieval**
+
    ```bash
    # Get multiple parameters in one call
    aws ssm get-parameters --names "/myapp/production/database/host" "/myapp/production/database/port"
@@ -784,6 +430,7 @@ aws ssm get-parameter-history --name "/myapp/production/database/host"
    - Advanced parameters have monthly charges
 
 3. **Cache Parameters in Applications**
+
    ```python
    # Cache parameters to reduce API calls
    import time
@@ -801,59 +448,6 @@ aws ssm get-parameter-history --name "/myapp/production/database/host"
        parameter_cache[name] = (value, time.time())
        return value
    ```
-
-## Integration with Other Modules
-
-### With EKS and Application Deployment
-
-```hcl
-# Parameter Store
-module "app_config" {
-  source = "./modules/parameter-store"
-  
-  parameters = {
-    "database/host" = {
-      type        = "String"
-      value       = module.rds.cluster_endpoint
-      description = "Database hostname"
-    }
-  }
-  
-  general_tags = var.common_tags
-}
-
-# EKS Deployment using parameters
-module "k8s_app" {
-  source = "./modules/k8s-app"
-  
-  parameter_store_prefix = "/${var.project}/${var.environment}"
-  
-  depends_on = [module.app_config]
-}
-```
-
-### With CI/CD Pipeline
-
-```yaml
-# GitHub Actions workflow
-name: Deploy Application
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Get parameters
-      run: |
-        echo "DB_HOST=$(aws ssm get-parameter --name '/myapp/production/database/host' --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
-        echo "API_VERSION=$(aws ssm get-parameter --name '/myapp/production/deployment/version' --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
-    
-    - name: Deploy application
-      run: |
-        kubectl set env deployment/myapp DB_HOST=$DB_HOST API_VERSION=$API_VERSION
-```
 
 ## Prerequisites
 
@@ -882,6 +476,7 @@ jobs:
 ## Contributing
 
 When contributing to this module:
+
 1. Follow the established naming conventions
 2. Add comprehensive parameter descriptions
 3. Test with different parameter types

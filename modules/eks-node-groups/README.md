@@ -544,38 +544,6 @@ force_update_version       = false # Gradual updates
 
 ## Integration with Other Modules
 
-### Complete EKS Setup
-
-```hcl
-# EKS Cluster
-module "eks_cluster" {
-  source = "./modules/eks-cluster"
-  # ... cluster configuration
-}
-
-# Node Groups
-module "eks_node_groups" {
-  source = "./modules/eks-node-groups"
-  
-  cluster = {
-    name                       = module.eks_cluster.cluster_name
-    endpoint                   = module.eks_cluster.cluster_endpoint
-    certificate_authority_data = module.eks_cluster.cluster_certificate_authority_data
-    version                    = module.eks_cluster.cluster_version
-  }
-  
-  depends_on = [module.eks_cluster]
-}
-
-# Add-ons
-module "eks_addons" {
-  source = "./modules/eks-addons"
-  
-  cluster_name = module.eks_cluster.cluster_name
-  depends_on   = [module.eks_node_groups]
-}
-```
-
 ## Troubleshooting
 
 ### Common Issues

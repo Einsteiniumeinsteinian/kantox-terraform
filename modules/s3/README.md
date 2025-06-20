@@ -17,11 +17,12 @@ This Terraform module creates and manages multiple AWS S3 buckets with a standar
 
 The module follows a standardized naming pattern:
 
-```
+```path
 {prefix}-{environment}-{purpose}-{project}-{suffix}
 ```
 
 **Examples:**
+
 - `production-uploads-myapp` (without prefix/suffix)
 - `company-production-logs-myapp-v1` (with prefix and suffix)
 - `staging-backups-ecommerce` (staging environment)
@@ -357,6 +358,7 @@ buckets = {
 ```
 
 **Configuration Options:**
+
 - **versioning**: Controls S3 object versioning
   - `true`: Keep multiple versions of objects (recovery, compliance)
   - `false`: Single version only (cost optimization)
@@ -375,6 +377,7 @@ buckets = {
 ### Output Structures
 
 #### Buckets Output
+
 ```hcl
 buckets = {
   uploads = {
@@ -406,6 +409,7 @@ restrict_public_buckets = true   # Restrict public bucket policies
 ```
 
 This configuration ensures:
+
 - No public read/write access via ACLs
 - No public access via bucket policies
 - Protection against accidental public exposure
@@ -413,6 +417,7 @@ This configuration ensures:
 ### Server-Side Encryption
 
 When encryption is enabled:
+
 - **Algorithm**: AES256 (Amazon S3 managed keys)
 - **Bucket Key**: Enabled for cost optimization
 - **Default Encryption**: Applied to all objects
@@ -429,6 +434,7 @@ rule {
 ### Versioning Configuration
 
 Object versioning provides:
+
 - **Data Protection**: Recovery from accidental deletion or modification
 - **Compliance**: Audit trail for data changes
 - **Backup Strategy**: Multiple object versions for different backup generations
@@ -455,147 +461,6 @@ Object versioning provides:
 2. **Encryption Choice**: Balance security with performance
 3. **Bucket Key**: Enabled for encryption cost reduction
 4. **Purpose-Based Configuration**: Different settings for different use cases
-
-## Integration Examples
-
-### With CloudFront for Static Website
-
-```hcl
-module "website_buckets" {
-  source = "./terraform/modules/s3"
-
-  buckets = {
-    website = {
-      versioning = false  # Static content
-      encryption = false  # Public website content
-    }
-    assets = {
-      versioning = false  # CSS, JS, images
-      encryption = false  # Public assets
-    }
-  }
-
-  general_tags = var.common_tags
-}
-
-resource "aws_cloudfront_distribution" "website" {
-  origin {
-    domain_name = module.website_buckets.buckets.website.domain
-    origin_id   = "S3-${module.website_buckets.buckets.website.id}"
-    
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.website.cloudfront_access_identity_path
-    }
-  }
-  
-  # CloudFront configuration...
-}
-```
-
-### With Lambda for Data Processing
-
-```hcl
-module "data_buckets" {
-  source = "./terraform/modules/s3"
-
-  buckets = {
-    input = {
-      versioning = false
-      encryption = true
-    }
-    output = {
-      versioning = false
-      encryption = true
-    }
-    processed = {
-      versioning = true   # Keep processing history
-      encryption = true
-    }
-  }
-
-  general_tags = var.common_tags
-}
-
-resource "aws_lambda_function" "data_processor" {
-  filename         = "data_processor.zip"
-  function_name    = "data-processor"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  runtime         = "python3.9"
-
-  environment {
-    variables = {
-      INPUT_BUCKET    = module.data_buckets.buckets.input.id
-      OUTPUT_BUCKET   = module.data_buckets.buckets.output.id
-      PROCESSED_BUCKET = module.data_buckets.buckets.processed.id
-    }
-  }
-}
-
-resource "aws_s3_bucket_notification" "data_processing" {
-  bucket = module.data_buckets.buckets.input.id
-
-  lambda_function {
-    lambda_function_arn = aws_lambda_function.data_processor.arn
-    events             = ["s3:ObjectCreated:*"]
-  }
-}
-```
-
-### With Application for File Storage
-
-```hcl
-module "app_storage" {
-  source = "./terraform/modules/s3"
-
-  buckets = {
-    uploads = {
-      versioning = true
-      encryption = true
-    }
-    temp = {
-      versioning = false
-      encryption = false
-    }
-  }
-
-  general_tags = var.common_tags
-}
-
-# IAM policy for application access
-resource "aws_iam_policy" "app_s3_access" {
-  name        = "${var.app_name}-s3-access"
-  description = "S3 access for application"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ]
-        Resource = [
-          "${module.app_storage.buckets.uploads.arn}/*",
-          "${module.app_storage.buckets.temp.arn}/*"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:ListBucket"
-        ]
-        Resource = [
-          module.app_storage.buckets.uploads.arn,
-          module.app_storage.buckets.temp.arn
-        ]
-      }
-    ]
-  })
-}
-```
 
 ## Lifecycle Management
 
@@ -745,6 +610,7 @@ resource "aws_budgets_budget" "s3_costs" {
 ### Common Issues
 
 1. **Bucket Name Conflicts**
+
    ```bash
    # Check if bucket name is available
    aws s3api head-bucket --bucket "production-uploads-myapp" 2>/dev/null
@@ -752,6 +618,7 @@ resource "aws_budgets_budget" "s3_costs" {
    ```
 
 2. **Access Denied Errors**
+
    ```bash
    # Check bucket policy and ACLs
    aws s3api get-bucket-policy --bucket "production-uploads-myapp"
@@ -759,6 +626,7 @@ resource "aws_budgets_budget" "s3_costs" {
    ```
 
 3. **Encryption Issues**
+
    ```bash
    # Check encryption configuration
    aws s3api get-bucket-encryption --bucket "production-uploads-myapp"
@@ -813,6 +681,7 @@ aws cloudwatch get-metric-statistics \
 ## Contributing
 
 When contributing to this module:
+
 1. Follow established naming conventions
 2. Maintain security best practices
 3. Test with different bucket configurations

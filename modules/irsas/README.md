@@ -1,6 +1,6 @@
- # IAM Module for EKS Service Accounts
+# IAM Module for EKS Service Accounts
 
-This Terraform module creates IAM roles and policies for Kubernetes service accounts using IAM Roles for Service Accounts (IRSA) and GitHub Actions OIDC integration. It provides secure, least-privilege access for applications running in EKS clusters and CI/CD workflows.
+This Terraform module creates IAM roles and policies for Kubernetes service accounts using IAM Roles for Service Accounts (IRSA) and GitHub Actions OIDC integration. It provides secure, least-privilege access for applications running in EKS clusters and CI/CD workflows. This is application specific module.
 
 ## Features
 
@@ -33,12 +33,12 @@ The module creates the following IAM resources:
 
 ### GitHub Actions Integration
 
-3. **GitHub Actions Role**: For CI/CD workflows
+1. **GitHub Actions Role**: For CI/CD workflows
    - ECR repository access (pull/push)
    - EKS cluster describe permissions
    - SSM Parameter Store access for versioning
 
-4. **GitHub OIDC Provider**: Enables secure authentication from GitHub Actions
+2. **GitHub OIDC Provider**: Enables secure authentication from GitHub Actions
 
 ## Usage
 
@@ -218,7 +218,7 @@ metadata:
 
 - List all S3 buckets and specific bucket contents
 - Read SSM parameters under `/{Project}/{Environment}/*`
-- Access to specified S3 bucket ARNs
+- Access to specified S3 bucket ARNs (all)
 
 **Example Kubernetes Service Account:**
 
@@ -231,8 +231,6 @@ metadata:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/PROJECT-ENV-auxiliary-service-role
 ```
-
-## GitHub Actions Integration
 
 ### OIDC Provider Configuration
 
@@ -288,7 +286,7 @@ jobs:
 
 The module configures access to SSM parameters following this hierarchy:
 
-```
+```bash
 /{Project}/{Environment}/
 ├── database/
 │   ├── host
@@ -446,60 +444,6 @@ kubectl exec -it <pod-name> -n <namespace> -- aws sts get-caller-identity
 # Check GitHub Actions token
 curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
      "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq .
-```
-
-## Integration Examples
-
-### With Helm Charts
-
-```yaml
-# values.yaml
-serviceAccount:
-  create: true
-  name: main-api-service-account
-  annotations:
-    eks.amazonaws.com/role-arn: "{{ .Values.aws.roleArn }}"
-
-# Helm template
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: main-api
-spec:
-  template:
-    spec:
-      serviceAccountName: main-api-service-account
-      containers:
-      - name: main-api
-        env:
-        - name: AWS_ROLE_ARN
-          value: "{{ .Values.aws.roleArn }}"
-        - name: AWS_WEB_IDENTITY_TOKEN_FILE
-          value: "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
-```
-
-### With Kustomize
-
-```yaml
-# kustomization.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-- service-account.yaml
-- deployment.yaml
-
-replacements:
-- source:
-    kind: ServiceAccount
-    name: main-api-service-account
-    fieldPath: metadata.annotations.[eks.amazonaws.com/role-arn]
-  targets:
-  - select:
-      kind: Deployment
-      name: main-api
-    fieldPaths:
-    - spec.template.spec.containers.[name=main-api].env.[name=AWS_ROLE_ARN].value
 ```
 
 ## Prerequisites
