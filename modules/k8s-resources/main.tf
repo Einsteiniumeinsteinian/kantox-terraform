@@ -44,6 +44,13 @@ resource "kubernetes_namespace" "namespaces" {
     labels      = each.value.labels
     annotations = each.value.annotations
   }
+
+    lifecycle {
+    ignore_changes = [
+      metadata[0].labels,
+      metadata[0].annotations
+    ]
+  }
 }
 
 # =============================================================================
@@ -517,6 +524,10 @@ resource "kubernetes_secret" "argocd_initial_admin_secret" {
   }
 
   type = "Opaque"
+
+    lifecycle {
+    ignore_changes = [data]
+  }
 
   depends_on = [
     kubernetes_namespace.namespaces,

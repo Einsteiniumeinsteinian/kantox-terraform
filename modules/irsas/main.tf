@@ -54,9 +54,7 @@ data "aws_iam_policy_document" "main_api_policy" {
       "ssm:GetParametersByPath",
       "ssm:DescribeParameters"
     ]
-    resources = tolist([
-      "arn:aws:ssm:${var.region}:${var.account_id}:parameter/${var.general_tags.Project}/${var.general_tags.Environment}/*"
-    ])
+    resources = ["arn:aws:ssm:${var.region}:${var.account_id}:parameter/${var.general_tags.Project}/${var.general_tags.Environment}/*"]
   }
 }
 
@@ -124,9 +122,7 @@ data "aws_iam_policy_document" "auxiliary_service_policy" {
       "ssm:GetParameter",
       "ssm:GetParametersByPath",
     ]
-    resources = tolist([
-      "arn:aws:ssm:${var.region}:${var.account_id}:parameter/${var.general_tags.Project}/${var.general_tags.Environment}/*"
-    ])
+    resources = ["arn:aws:ssm:${var.region}:${var.account_id}:parameter/${var.general_tags.Project}/${var.general_tags.Environment}/*"]
   }
 }
 

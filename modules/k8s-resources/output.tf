@@ -52,19 +52,10 @@ output "argocd" {
     version                  = var.argocd_version
     namespace                = var.argocd_namespace
     status                   = helm_release.argocd[0].status
-    server_url               = var.argocd_config.enable_ingress && length(var.argocd_config.ingress_host) > 0 ? (
-      var.argocd_config.enable_tls ? "https://${var.argocd_config.ingress_host}" : "http://${var.argocd_config.ingress_host}"
-    ) : null
-    ingress_enabled          = var.argocd_config.enable_ingress
-    tls_enabled             = var.argocd_config.enable_tls
-    ha_enabled              = var.argocd_config.ha_enabled
     metrics_enabled         = var.argocd_config.enable_metrics
     applicationset_enabled  = var.argocd_config.enable_applicationset
     notifications_enabled   = var.argocd_config.enable_notifications
     admin_password_secret   = length(var.argocd_admin_password) > 0 ? "argocd-initial-admin-secret" : null
-    load_balancer_hostname  = var.argocd_config.enable_ingress ? (
-      try(data.kubernetes_ingress_v1.argocd_ingress[0].status[0].load_balancer[0].ingress[0].hostname, null)
-    ) : null
   } : {
     installed = false
   }
@@ -92,16 +83,4 @@ output "service_account_annotations" {
       "eks.amazonaws.com/role-arn" = aws_iam_role.aws_load_balancer_controller[0].arn
     } : {}
   }
-}
-
-# Data source to get ingress details after creation
-data "kubernetes_ingress_v1" "argocd_ingress" {
-  count = var.install_argocd && var.argocd_config.enable_ingress ? 1 : 0
-  
-  metadata {
-    name      = "argocd-server"
-    namespace = kubernetes_namespace.namespaces[var.argocd_namespace].metadata[0].name
-  }
-  
-  depends_on = [helm_release.argocd]
 }
