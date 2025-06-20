@@ -6,7 +6,7 @@ A production-ready Terraform infrastructure for deploying microservices on Amazo
 
 ![Architecture Diagram](architecture.png)
 
-```
+```architecture
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                                AWS Cloud                                        │
 ├─────────────────────────────────────────────────────────────────────────────────┤
@@ -383,48 +383,6 @@ k8s_resources_config = {
     create_app_of_apps    = true
   }
 }
-```
-
-## Deployment Workflows
-
-### GitHub Actions Integration
-
-The infrastructure creates OIDC providers and IAM roles for GitHub Actions. Use these in your workflows:
-
-```yaml
-name: Deploy to EKS
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN_MAIN }}
-        aws-region: ${{ secrets.AWS_REGION }}
-    
-    - name: Login to ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-    
-    - name: Build and push Docker image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_MAIN }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 ```
 
 ## Management Operations
